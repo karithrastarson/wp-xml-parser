@@ -1,15 +1,18 @@
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.URL;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.*;
-import org.xml.sax.InputSource;
 
 /*
  * Created by kari.thrastarson on 22-09-2016.
- * Copyleft
  */
 
 public class WPArchive {
@@ -26,27 +29,60 @@ public class WPArchive {
     public void init() {
 
         try {
-            File file = new File(xmlFile);
+            //Check if path is url or file
+            URL url = null;
+            boolean isUrl = false;
+            try {
+                url = new URL(xmlFile);
+                isUrl = true;
+
+
+            } catch(Exception e) {
+
+            }
+            File file;
+            if (isUrl) {
+                System.out.println("Parsing from URL");
+                PrintWriter writer = new PrintWriter("url.xml", "UTF-8");
+
+                BufferedReader in = new BufferedReader(
+                        new InputStreamReader(url.openStream()));
+
+                String inputLine;
+                while ((inputLine = in.readLine()) != null)
+                    writer.println(inputLine);
+                in.close();
+                file = new File("url.xml");
+                writer.close();
+            }
+            else {
+                System.out.println("Parsing from file");
+                file = new File(xmlFile);
+            }
+
             DocumentBuilder dBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             Document doc = dBuilder.parse(file);
+
+
+            System.out.println(doc.toString());
 
             archive = new ArrayList<Post>();
 
             if (doc.hasChildNodes()) {
                 NodeList nodeList = doc.getChildNodes();
+
                 //Let's find all nodes that are the actual blogs:
                 NodeList blogList = doc.getElementsByTagName("item");
-                extractInfo(blogList);
-              }
+
+                extractInfo(blogList, !isUrl);
             }
-         catch (Exception e) {
+        }
+        catch (Exception e) {
             System.out.println("Cause: " + e.getCause() + "\nMessage: " + e.getMessage());
         }
     }
 
-
-    private void extractInfo(NodeList nodeList) throws ParserConfigurationException {
-
+    private void extractInfo(NodeList nodeList, boolean isFile) throws ParserConfigurationException {
 
         boolean isPost = false;
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -54,10 +90,17 @@ public class WPArchive {
             Node tempNode = nodeList.item(i);
 
             //Is this node a post?
-            Element postType = (Element) tempNode;
-            NodeList pt = postType.getElementsByTagName("wp:post_type");
+            if (isFile) {
+                Element postType = (Element) tempNode;
 
-            isPost = (pt.item(0).getTextContent().equals("post"));
+                NodeList pt = postType.getElementsByTagName("wp:post_type");
+
+                isPost = (pt.item(0).getTextContent().equals("post"));
+            }
+            else{
+                isPost = true;
+            }
+
 
             if (isPost) {
 
@@ -77,6 +120,7 @@ public class WPArchive {
 
                 Element comments = (Element) tempNode;
                 NodeList commentList = contentElement.getElementsByTagName("wp:comment");
+
                 //Process Comments
                 currentPost = processComments(currentPost, commentList);
 
@@ -85,6 +129,7 @@ public class WPArchive {
                 currentPost.setContent(ce.item(0).getTextContent());
 
                 if (!(currentPost.getAuthor().isEmpty() && currentPost.getContent().isEmpty() && currentPost.getTitle().isEmpty()))
+
                     archive.add(currentPost);
             }
         }
@@ -139,7 +184,6 @@ public class WPArchive {
         return false;
     }
 
-
     private void printArchive() {
         System.out.println(archive.size());
         for (Post p : archive) {
@@ -152,8 +196,11 @@ public class WPArchive {
 
     public static void main(String args[]){
         WPArchive wpTest = new WPArchive("novoblog.xml");
+        // WPArchive wpTest = new WPArchive("http://blogs.novonordisk.com/graduates/feed/");
         wpTest.printArchive();
     }
 
-
+    public ArrayList<Post> getArchive() {
+        return archive;
+    }
 }
