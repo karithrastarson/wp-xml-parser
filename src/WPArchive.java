@@ -1,15 +1,17 @@
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.URL;
 import java.util.ArrayList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.*;
-import org.xml.sax.InputSource;
 
 /*
  * Created by kari.thrastarson on 22-09-2016.
- * Copyleft
  */
 
 public class WPArchive {
@@ -27,26 +29,30 @@ public class WPArchive {
 
         try {
             File file = new File(xmlFile);
+
             DocumentBuilder dBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             Document doc = dBuilder.parse(file);
+
+            System.out.println(doc.toString());
 
             archive = new ArrayList<Post>();
 
             if (doc.hasChildNodes()) {
                 NodeList nodeList = doc.getChildNodes();
+
                 //Let's find all nodes that are the actual blogs:
                 NodeList blogList = doc.getElementsByTagName("item");
+
                 extractInfo(blogList);
-              }
             }
-         catch (Exception e) {
+        }
+        catch (Exception e) {
             System.out.println("Cause: " + e.getCause() + "\nMessage: " + e.getMessage());
         }
     }
 
 
     private void extractInfo(NodeList nodeList) throws ParserConfigurationException {
-
 
         boolean isPost = false;
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -77,6 +83,7 @@ public class WPArchive {
 
                 Element comments = (Element) tempNode;
                 NodeList commentList = contentElement.getElementsByTagName("wp:comment");
+
                 //Process Comments
                 currentPost = processComments(currentPost, commentList);
 
@@ -155,5 +162,7 @@ public class WPArchive {
         wpTest.printArchive();
     }
 
-
+    public ArrayList<Post> getArchive() {
+        return archive;
+    }
 }
